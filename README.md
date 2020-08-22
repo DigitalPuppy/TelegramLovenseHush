@@ -49,5 +49,15 @@ listening for commands.
 
 ## Commands
 
-The two supported commands for now are '!vibrate intensity duration' and
-'!pattern patternNumber duration'.
+   !help
+   !ping
+   !vibrate intensity duration
+   !pattern patternNubmer duration
+   !random
+   !stop
+   
+duration is in seconds and capped to 10 (or use '-' to leave on)
+
+intensity is between 1 and 20
+
+patternNumber is between 1 and 4

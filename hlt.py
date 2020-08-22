@@ -4,6 +4,7 @@ import requests
 import os
 import sys
 import time
+import random
 
 
 class lovense:
@@ -22,10 +23,14 @@ class lovense:
         res = requests.get("http://{}/Vibrate?v={}&t={}".format(self.hostport, 0, self.toy))
     def vibrate(self, speed, duration):
         res = requests.get("http://{}/Vibrate?v={}&t={}".format(self.hostport, speed, self.toy))
+        if duration == '-':
+            return
         time.sleep(int(duration))
         self.stop()
     def pattern(self, pattern, duration):
         res = requests.get("http://{}/Preset?v={}&t={}".format(self.hostport, pattern, self.toy))
+        if duration == '-':
+            return
         time.sleep(int(duration))
         self.stop()
 
@@ -73,12 +78,44 @@ class hlt(telegram):
             print(m['text'])
             t = m['text']
             ts = t.split(' ')
+            if len(ts) > 0 and ts[0] == '!ping':
+                self.send(m['chat']['id'], 'online and ready to serve!')
+            if len(ts) > 0 and ts[0] == '!help':
+                self.send(m['chat']['id'],
+"""commands:
+   !ping
+   !vibrate intensity duration
+   !pattern patternNubmer duration
+   !random
+   !stop
+duration is in seconds and capped to 10 (or use '-' to leave on)
+intensity is between 1 and 20
+patternNumber is between 1 and 4
+""")
+            if len(ts) > 0 and ts[0] == '!random':
+                if random.randint(0, 1):
+                    p = random.randint(1, 4)
+                    d = random.randint(3, 10)
+                    self.send(m['chat']['id'], 'Go for pattern {} for {} seconds'.format(p, d))
+                    self.l.pattern(p, d)
+                    self.send(m['chat']['id'], 'bzzzt!')
+                else:
+                    s = random.randint(5, 20)
+                    d = random.randint(3, 10)
+                    self.send(m['chat']['id'], 'Go for vibrate at {} for {} seconds'.format(s, d))
+                    self.l.vibrate(s, d)
+                    self.send(m['chat']['id'], 'bzzzt!')
+            if len(ts) > 0 and ts[0] == '!stop':
+                self.l.stop()
+                self.send(m['chat']['id'], 'stopped')
             if len(ts) > 2 and ts[0] == '!vibrate':
                 try:
                     speed = int(ts[1])
-                    duration = int(ts[2])
-                    if duration > 10:
-                        duration = 10
+                    duration = ts[2]
+                    if duration != '-':
+                        duration = int(ts[2])
+                        if duration > 10:
+                            duration = 10
                     self.l.vibrate(speed, duration)
                     self.send(m['chat']['id'], 'bzzzt!')
                 except Exception as e:
@@ -86,13 +123,30 @@ class hlt(telegram):
             if len(ts) > 2 and ts[0] == '!pattern':
                 try:
                     speed = int(ts[1])
-                    duration = int(ts[2])
-                    if duration > 10:
-                        duration = 10
+                    duration = ts[2]
+                    if duration != '-':
+                        duration = int(ts[2])
+                        if duration > 10:
+                            duration = 10
                     self.l.pattern(speed, duration)
                     self.send(m['chat']['id'], 'bzzzt!')
                 except Exception as e:
                     pass
+
+def randomfun(l, mininterval, maxinterval, minduration, maxduration):
+    try:
+        while True:
+            time.sleep(random.randint(mininterval, maxinterval))
+            if random.randint(0, 1):
+                p = random.randint(1, 4)
+                d = random.randint(minduration, maxduration)
+                self.l.pattern(p, d)
+            else:
+                s = random.randint(5, 20)
+                d = random.randint(minduration, maxduration)
+                self.l.vibrate(s, d)
+    except Exception:
+        l.stop()
 
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'locate':
@@ -113,6 +167,8 @@ if __name__ == '__main__':
                 l.vibrate(sys.argv[4], sys.argv[5])
             elif cmd == 'pattern':
                 l.pattern(sys.argv[4], sys.argv[5])
+            elif cmd == 'randomfun':
+                randomfun(l, int(sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]), int(sys.argv[7]))
             else:
                 raise Exception("Unknown command (stop, vibrate, pattern)")
     elif len(sys.argv) > 2 and sys.argv[1] == 'run':
