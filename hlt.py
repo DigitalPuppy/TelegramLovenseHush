@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import random
+import threading
 
 
 class lovense:
@@ -19,20 +20,32 @@ class lovense:
         if len(j['data']) == 0:
             raise Exception('Connect OK but no toy found')
         self.toy = list(j['data'].keys())[0]
+    def stopin(self, delay):
+        def dostopin(l, delay):
+            time.sleep(delay)
+            l.stop()
+        t = threading.Thread(target=dostopin, args=[self, delay])
+        t.start()
     def stop(self):
         res = requests.get("http://{}/Vibrate?v={}&t={}".format(self.hostport, 0, self.toy))
-    def vibrate(self, speed, duration):
+    def vibrate(self, speed, duration, block=False):
         res = requests.get("http://{}/Vibrate?v={}&t={}".format(self.hostport, speed, self.toy))
         if duration == '-':
             return
-        time.sleep(int(duration))
-        self.stop()
-    def pattern(self, pattern, duration):
+        if block:
+            time.sleep(int(duration))
+            self.stop()
+        else:
+            self.stopin(int(duration))
+    def pattern(self, pattern, duration, block=False):
         res = requests.get("http://{}/Preset?v={}&t={}".format(self.hostport, pattern, self.toy))
         if duration == '-':
             return
-        time.sleep(int(duration))
-        self.stop()
+        if block:
+            time.sleep(int(duration))
+            self.stop()
+        else:
+            self.stopin(int(duration))
 
 class telegram:
     def __init__(self, botkey = None):
@@ -88,7 +101,7 @@ class hlt(telegram):
    !pattern patternNubmer duration
    !random
    !stop
-duration is in seconds and capped to 10 (or use '-' to leave on)
+duration is in seconds and capped to 30 (or use '-' to leave on)
 intensity is between 1 and 20
 patternNumber is between 1 and 4
 """)
@@ -114,8 +127,8 @@ patternNumber is between 1 and 4
                     duration = ts[2]
                     if duration != '-':
                         duration = int(ts[2])
-                        if duration > 10:
-                            duration = 10
+                        if duration > 30:
+                            duration = 30
                     self.l.vibrate(speed, duration)
                     self.send(m['chat']['id'], 'bzzzt!')
                 except Exception as e:
@@ -126,8 +139,8 @@ patternNumber is between 1 and 4
                     duration = ts[2]
                     if duration != '-':
                         duration = int(ts[2])
-                        if duration > 10:
-                            duration = 10
+                        if duration > 30:
+                            duration = 30
                     self.l.pattern(speed, duration)
                     self.send(m['chat']['id'], 'bzzzt!')
                 except Exception as e:
@@ -140,11 +153,11 @@ def randomfun(l, mininterval, maxinterval, minduration, maxduration):
             if random.randint(0, 1):
                 p = random.randint(1, 4)
                 d = random.randint(minduration, maxduration)
-                self.l.pattern(p, d)
+                l.pattern(p, d, True)
             else:
                 s = random.randint(5, 20)
                 d = random.randint(minduration, maxduration)
-                self.l.vibrate(s, d)
+                l.vibrate(s, d, True)
     except Exception:
         l.stop()
 
